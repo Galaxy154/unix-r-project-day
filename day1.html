@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 1: From Raw Data to Report</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<button class="menu-toggle" aria-label="Toggle menu">☰</button>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <a href="index.html">Build a Reproducible Project: Unix + R</a>
+    <a href="https://imci.uidaho.edu/data-carpentries-training" target="_blank"><span>IMCI · University of Idaho</span></a>
+  </div>
+  <nav>
+    <div class="nav-section">Overview</div>
+    <a href="index.html">Home</a>
+    <div class="nav-section">Workshop</div>
+    <a href="day1.html">Day 1: Raw Data to Report<span class="day-label">One-day hands-on</span></a>
+    
+  </nav>
+  <div class="sidebar-footer">Sarem Khilji<br>Site style adapted from<br>JT Van Leuven's course site</div>
+</aside>
+
+<div class="main">
+  <header class="page-header">
+    <div class="day-tag">Day 1 · One-day hands-on session</div>
+    <h1>From Raw Data to Report</h1>
+    <div class="meta">
+      <span>Dataset: bird_surveys.tar.gz</span>
+      <span>Tools: bash, R, dplyr, ggplot2</span>
+      <span>🐞 8 bugs to find</span>
+    </div>
+  </header>
+
+  <div class="content">
+<div class="section" id="plan"><div class="section-title">The Plan</div>
+      <p>Three years (2023–2025) of bird point-count surveys from 12 sites on the Palouse: four forest, four grassland, and four wetland sites, each visited in spring, summer, and fall. Each row is one species seen on one visit, with how many birds were counted.</p>
+      <p>By the end you'll have a project that rebuilds every result from the raw data with a few commands:</p>
+      <div class="code-block output"><div class="code-header"><span class="code-lang">project layout</span></div><pre><code>bird_project/
+├── data/
+│   ├── raw/       downloaded data (never edited by hand)
+│   └── clean/     data our scripts make
+├── scripts/       one script per step
+├── results/       tables and the HTML report
+└── figures/       plots</code></pre></div>
+      <h2>The pipeline</h2>
+      <ol>
+        <li><strong>Download</strong> the data with <code>curl</code> (shell)</li>
+        <li><strong>Combine</strong> the yearly files into one (shell)</li>
+        <li><strong>Summarize</strong> by habitat and season (R + dplyr)</li>
+        <li><strong>Plot</strong> the results (R + ggplot2)</li>
+        <li><strong>Report</strong>: write an HTML page with the tables and figures (R)</li>
+      </ol>
+      <div class="bug" style="margin-top:20px">
+        <div class="bug-title">🐞 How the bug hunt works</div>
+        <p>Some scripts have bugs planted on purpose, <strong>8 in total</strong>. Copy each script exactly as written, run it, and fix what breaks.</p>
+        <ul>
+          <li><strong>Read the first line of the error.</strong> It usually tells you what went wrong and where.</li>
+          <li><strong>Fix the first error first</strong>, then run again. One bug can hide the next.</li>
+          <li><strong>No error doesn't mean correct.</strong> Compare your output with the expected output on this page. Four of the bugs don't produce any error at all.</li>
+          <li>Each bug has a <strong>Hint</strong> and a <strong>Solution</strong>. Give it a few minutes before you open them.</li>
+        </ul>
+      </div></div>
+<div class="section"><div class="section-title">Step 1 · Make the Project Folders</div>
+      <p>Every project gets its own folder, with the same layout every time. Start on your Desktop:</p>
+      <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="kw">cd</span> ~/Desktop          <span class="cm"># WSL: cd /mnt/c/Users/&lt;your-username&gt;/Desktop</span>
+<span class="kw">mkdir</span> -p bird_project/{data/raw,data/clean,scripts,results,figures}
+<span class="kw">cd</span> bird_project
+<span class="kw">find</span> . -type d</code></pre></div>
+      <div class="code-block output"><div class="code-header"><span class="code-lang">output</span></div><pre><code>.
+./data
+./data/clean
+./data/raw
+./figures
+./results
+./scripts</code></pre></div>
+      <div class="callout tip"><div class="callout-title">What just happened?</div><p><code>mkdir -p</code> makes a folder <em>and any parent folders it needs</em>, without complaining if they already exist. The curly braces <code>{a,b,c}</code> are brace expansion: the shell turns one path into five. <code>find . -type d</code> lists every directory under the current one.</p></div>
+      <div class="callout warn"><div class="callout-title">WSL users: build it on your Windows Desktop</div><p>RStudio runs on Windows, so it can only open the project if it lives on your Windows drive. <code>/mnt/c/Users/&lt;you&gt;/Desktop</code> in Ubuntu is the same folder as <code>C:\Users\&lt;you&gt;\Desktop</code> in File Explorer. If your Desktop is synced to OneDrive, it's <code>/mnt/c/Users/&lt;you&gt;/OneDrive/Desktop</code>.</p></div>
+      <p>From here on, <strong>run every command from inside <code>bird_project/</code></strong>. Check with <code>pwd</code> if you're not sure.</p></div>
+<div class="section"><div class="section-title">Step 2 · Download the Data</div>
+      <p>Instead of clicking a download link, we'll put the download in a script. Then anyone can get the exact same data by running one command. Create the script with nano:</p>
+      <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="kw">nano</span> scripts/01_download.sh</code></pre></div>
+      <p>Paste this in, then save with <code>Ctrl+O</code>, <code>Enter</code>, and exit with <code>Ctrl+X</code>:</p>
+      <div class="code-block"><div class="code-header"><span class="code-lang">scripts/01_download.sh</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="cm">#!/bin/bash</span>
+<span class="cm"># Download the bird survey data and unpack it into data/raw/</span>
+
+FILE=<span class="st">&quot;bird_survey.tar.gz&quot;</span>
+URL=<span class="st">&quot;https://galaxy154.github.io/unix-r-project-day/data/$FILE&quot;</span>
+
+<span class="kw">cd</span> data/raw
+<span class="kw">curl</span> -LO <span class="st">&quot;$URL&quot;</span>
+<span class="kw">tar</span> -xzf <span class="st">&quot;$FILE&quot;</span>
+<span class="kw">ls</span> -lh bird_surveys</code></pre></div>
+      <p>Run it:</p>
+      <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="kw">bash</span> scripts/01_download.sh</code></pre></div>
+      <div class="bug"><div class="bug-title">🐞 Bug 1 · The download that wasn't</div><p>You should see something like this:</p><div class="code-block output"><div class="code-header"><span class="code-lang">error</span></div><pre><code>gzip: stdin: not in gzip format
+tar: Child returned status 1
+tar: Error is not recoverable: exiting now
+ls: cannot access &#x27;bird_surveys&#x27;: No such file or directory</code></pre></div><details><summary>Hint</summary><div class="details-body"><p><code>curl</code> did download <em>something</em>. Look at what it is:</p><div class="code-block"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="kw">head</span> data/raw/bird_survey.tar.gz</code></pre></div><p>Is that a compressed file? Now compare the file name in the script with the link on the home page.</p></div></details><details><summary>Solution</summary><div class="details-body"><p>The file is called <code>bird_survey<strong>s</strong>.tar.gz</code>. The script asked for a file that doesn't exist, so the server sent back a "404 Not Found" web page, and <code>curl</code> saved that web page under the <code>.tar.gz</code> name anyway. <code>tar</code> then tried to unpack a web page.</p><div class="code-block"><div class="code-header"><span class="code-lang">fix in scripts/01_download.sh</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code>FILE=<span class="st">&quot;bird_surveys.tar.gz&quot;</span></code></pre></div><p>Delete the fake file and run it again:</p><div class="code-block"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="kw">rm</span> data/raw/bird_survey.tar.gz
+<span class="kw">bash</span> scripts/01_download.sh</code></pre></div><p><strong>Lesson:</strong> a download can "succeed" and still give you garbage. <code>curl -fLO</code> (add <code>-f</code>) makes curl stop with an error on a bad link instead of saving the error page.</p></div></details></div>
+      <p>When it works, you'll see the four data files:</p>
+      <div class="code-block output"><div class="code-header"><span class="code-lang">output</span></div><pre><code>-rw-r--r-- 1 you you  423 sites.csv
+-rw-r--r-- 1 you you 6.5K survey_2023.csv
+-rw-r--r-- 1 you you 6.2K survey_2024.csv
+-rw-r--r-- 1 you you 6.2K survey_2025.csv</code></pre></div>
+      <div class="callout tip"><div class="callout-title">Why didn't my terminal move into data/raw?</div><p>The script runs in its own copy of the shell. Its <code>cd</code> only affects the script, so when it finishes you're still in <code>bird_project/</code>.</p></div></div>
+<div class="section"><div class="section-title">Step 3 · Look Before You Analyze</div>
+      <p>Before writing any analysis, use the shell to get to know the data. None of these commands change anything.</p>
+      <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="kw">head</span> -n 5 data/raw/bird_surveys/survey_2023.csv
+<span class="kw">wc</span> -l data/raw/bird_surveys/*.csv
+<span class="kw">cat</span> data/raw/bird_surveys/sites.csv</code></pre></div>
+      <div class="code-block output"><div class="code-header"><span class="code-lang">first output</span></div><pre><code>date,site_id,season,observer,species,count
+2023-05-05,S01,spring,SK,Black-capped Chickadee,3
+2023-05-05,S01,spring,SK,Northern Flicker,11
+2023-05-05,S01,spring,SK,Steller&#x27;s Jay,8
+2023-05-05,S01,spring,SK,Red-breasted Nuthatch,9</code></pre></div>
+      <p>Which species were recorded most often? Pull out column 5, then count:</p>
+      <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="kw">cut</span> -d , -f 5 data/raw/bird_surveys/survey_*.csv <span class="op">|</span> <span class="kw">sort</span> <span class="op">|</span> <span class="kw">uniq</span> -c <span class="op">|</span> <span class="kw">sort</span> -n <span class="op">|</span> <span class="kw">tail</span> -n 5</code></pre></div>
+      <div class="code-block output"><div class="code-header"><span class="code-lang">output</span></div><pre><code>     27 Black-capped Chickadee
+     27 Western Meadowlark
+     33 Red-winged Blackbird
+     50 Song Sparrow
+     55 American Robin</code></pre></div>
+      <div class="callout demo"><div class="callout-title">Your turn</div>
+        <p>1. How many times was a Mallard recorded in each year? (Hint: <code>grep -c</code>)</p>
+        <p>2. Count the values in the <strong>season</strong> column (column 3) the same way. Does anything look odd? Write it down; it will matter later.</p>
+      </div>
+      <details><summary>Answers</summary><div class="details-body">
+        <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="kw">grep</span> -c <span class="st">&quot;Mallard&quot;</span> data/raw/bird_surveys/survey_*.csv</code></pre></div>
+        <div class="code-block output"><div class="code-header"><span class="code-lang">output</span></div><pre><code>data/raw/bird_surveys/survey_2023.csv:7
+data/raw/bird_surveys/survey_2024.csv:8
+data/raw/bird_surveys/survey_2025.csv:7</code></pre></div>
+        <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="kw">cut</span> -d , -f 3 data/raw/bird_surveys/survey_*.csv <span class="op">|</span> <span class="kw">sort</span> <span class="op">|</span> <span class="kw">uniq</span> -c</code></pre></div>
+        <div class="code-block output"><div class="code-header"><span class="code-lang">output</span></div><pre><code>     40 Fall
+     59 Spring
+     48 Summer
+     74 fall
+      3 season
+    113 spring
+    114 summer</code></pre></div>
+        <p>Some seasons are capitalized and some aren't. To a computer, <code>Spring</code> and <code>spring</code> are different values. (The three <code>season</code> lines are the header from each file.)</p>
+      </div></details></div>
+<div class="section"><div class="section-title">Step 4 · Combine the Yearly Files</div>
+      <p>The data comes as one file per year. Let's stack them into a single file for R:</p>
+      <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="kw">nano</span> scripts/02_combine.sh</code></pre></div>
+      <div class="code-block"><div class="code-header"><span class="code-lang">scripts/02_combine.sh</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="cm">#!/bin/bash</span>
+<span class="cm"># Combine the three yearly survey files into one file</span>
+
+<span class="kw">mkdir</span> -p data/clean
+<span class="kw">cat</span> data/raw/bird_surveys/survey_*.csv <span class="op">&gt;</span> data/clean/all_surveys.csv
+
+<span class="kw">echo</span> <span class="st">&quot;Lines in combined file:&quot;</span>
+<span class="kw">wc</span> -l data/clean/all_surveys.csv
+<span class="kw">echo</span> <span class="st">&quot;Header lines (should be 1):&quot;</span>
+<span class="kw">grep</span> -c <span class="st">&quot;^date&quot;</span> data/clean/all_surveys.csv</code></pre></div>
+      <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="kw">bash</span> scripts/02_combine.sh</code></pre></div>
+      <div class="bug"><div class="bug-title">🐞 Bug 2 · Too many headers</div><p>No error this time, but the script's own check fails:</p><div class="code-block output"><div class="code-header"><span class="code-lang">your output</span></div><pre><code>Lines in combined file:
+451 data/clean/all_surveys.csv
+Header lines (should be 1):
+3</code></pre></div><details><summary>Hint</summary><div class="details-body"><p>Each yearly file starts with its own header line. What does <code>cat</code> do with them? Look for yourself:</p><div class="code-block"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="kw">grep</span> -n <span class="st">&quot;^date&quot;</span> data/clean/all_surveys.csv</code></pre></div></div></details><details><summary>Solution</summary><div class="details-body"><p><code>cat</code> just glues the files together, headers and all, so there's a header line in the middle of the data. R would read those as data rows and treat the <code>count</code> column as text. Keep the header from the first file only, then add the data rows from each file with <code>tail -n +2</code> ("start at line 2"):</p><div class="code-block"><div class="code-header"><span class="code-lang">replace the cat line with</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="cm"># Keep the header line from the first file only...</span>
+<span class="kw">head</span> -n 1 data/raw/bird_surveys/survey_2023.csv <span class="op">&gt;</span> data/clean/all_surveys.csv
+<span class="cm"># ...then add every file&#x27;s data rows, skipping each header</span>
+<span class="kw">for</span> file <span class="kw">in</span> data/raw/bird_surveys/survey_*.csv
+<span class="kw">do</span>
+    <span class="kw">tail</span> -n +2 <span class="st">&quot;$file&quot;</span> <span class="op">&gt;&gt;</span> data/clean/all_surveys.csv
+<span class="kw">done</span></code></pre></div><p>Note the <code>&gt;</code> on the first line (start a new file) versus <code>&gt;&gt;</code> in the loop (add to the end).</p></div></details></div>
+      <p>Correct output:</p>
+      <div class="code-block output"><div class="code-header"><span class="code-lang">output</span></div><pre><code>Lines in combined file:
+449 data/clean/all_surveys.csv
+Header lines (should be 1):
+1</code></pre></div></div>
+<div class="section"><div class="section-title">Step 5 · Open the Project in RStudio</div>
+      <p>Now switch to R. Make the folder an <strong>RStudio Project</strong> so R always starts in the right place:</p>
+      <ol>
+        <li>In RStudio: <strong>File → New Project → Existing Directory</strong></li>
+        <li>Browse to your <code>bird_project</code> folder and click <strong>Create Project</strong></li>
+      </ol>
+      <p>Check that R is in the right place:</p>
+      <div class="code-block"><div class="code-header"><span class="code-lang">R</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="fn">getwd</span>()        <span class="cm"># should end in /bird_project</span>
+<span class="fn">list.files</span>()   <span class="cm"># data, figures, results, scripts, bird_project.Rproj</span></code></pre></div>
+      <div class="callout tip"><div class="callout-title">Why a Project instead of setwd()?</div><p><code>setwd("C:/Users/me/Desktop/...")</code> only works on your computer. Inside a Project, every path is relative to the project folder, so the same scripts work on anyone's machine. That's what makes a project reproducible.</p></div>
+      <div class="callout tip"><div class="callout-title">One window for everything</div><p>RStudio has a <strong>Terminal</strong> tab next to the Console. You can run the shell steps there too.</p></div></div>
+<div class="section"><div class="section-title">Step 6 · Summarize the Data in R</div>
+      <p>Create a new script (<strong>File → New File → R Script</strong>), paste this in, and save it as <code>scripts/03_summarize.R</code>. Then click <strong>Source</strong> to run the whole script.</p>
+      <div class="code-block"><div class="code-header"><span class="code-lang">scripts/03_summarize.R</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="cm"># Summarize the bird surveys by habitat and season</span>
+<span class="kw">library</span>(dplyr)
+
+surveys <span class="op">&lt;-</span> <span class="fn">read.csv</span>(<span class="st">&quot;data/clean/all_surveys.csv&quot;</span>)
+sites   <span class="op">&lt;-</span> <span class="fn">read.csv</span>(<span class="st">&quot;data/raw/bird_surveys/sites.csv&quot;</span>)
+
+<span class="cm"># Add each site&#x27;s habitat to every survey row</span>
+birds <span class="op">&lt;-</span> <span class="fn">left_join</span>(surveys, sites, by = <span class="st">&quot;site&quot;</span>)
+
+<span class="cm"># One row per survey visit (one site on one date)</span>
+visits <span class="op">&lt;-</span> birds <span class="op">%&gt;%</span>
+  <span class="fn">group_by</span>(habitat, season, site_id, date) <span class="op">%&gt;%</span>
+  <span class="fn">summarise</span>(richness = <span class="fn">n_distinct</span>(species),
+            total_birds = <span class="fn">sum</span>(count),
+            .groups = <span class="st">&quot;drop&quot;</span>)
+
+<span class="cm"># Average visit by habitat and season</span>
+habitat_season <span class="op">&lt;-</span> visits <span class="op">%&gt;%</span>
+  <span class="fn">group_by</span>(habitat, season) <span class="op">%&gt;%</span>
+  <span class="fn">summarise</span>(n_visits = <span class="fn">n</span>(),
+            mean_richness = <span class="fn">round</span>(<span class="fn">mean</span>(richness), <span class="nm">1</span>),
+            mean_birds = <span class="fn">round</span>(<span class="fn">mean</span>(total_birds), <span class="nm">1</span>),
+            .groups = <span class="st">&quot;drop&quot;</span>)
+<span class="fn">print</span>(habitat_season)
+
+<span class="cm"># Total count of each species in each habitat</span>
+species_totals <span class="op">&lt;-</span> birds <span class="op">%&gt;%</span>
+  <span class="fn">group_by</span>(habitat, species) <span class="op">%&gt;%</span>
+  <span class="fn">summarise</span>(total = <span class="fn">sum</span>(count), .groups = <span class="st">&quot;drop&quot;</span>) <span class="op">%&gt;%</span>
+  <span class="fn">arrange</span>(<span class="fn">desc</span>(total))
+
+<span class="fn">dir.create</span>(<span class="st">&quot;results&quot;</span>, showWarnings = <span class="kw">FALSE</span>)
+<span class="fn">write.csv</span>(visits, <span class="st">&quot;results/visits.csv&quot;</span>, row.names = <span class="kw">FALSE</span>)
+<span class="fn">write.csv</span>(habitat_season, <span class="st">&quot;results/habitat_season_summary.csv&quot;</span>, row.names = <span class="kw">FALSE</span>)
+<span class="fn">write.csv</span>(species_totals, <span class="st">&quot;results/species_totals.csv&quot;</span>, row.names = <span class="kw">FALSE</span>)</code></pre></div>
+      <p>This script has <strong>three bugs</strong>. Fix them one at a time, and click <strong>Source</strong> again after each fix.</p>
+      <div class="bug"><div class="bug-title">🐞 Bug 3 · The join that can't find its column</div><div class="code-block output"><div class="code-header"><span class="code-lang">error</span></div><pre><code>Error in `left_join()`:
+! Join columns in `x` must be present in the data.
+✖ Problem with `site`.</code></pre></div><details><summary>Hint</summary><div class="details-body"><p>The join needs a column with the same name in both tables. What are the columns actually called?</p><div class="code-block"><div class="code-header"><span class="code-lang">R</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="fn">names</span>(surveys)
+<span class="fn">names</span>(sites)</code></pre></div></div></details><details><summary>Solution</summary><div class="details-body"><p>Both tables call it <code>site_id</code>, not <code>site</code>:</p><div class="code-block"><div class="code-header"><span class="code-lang">fix</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code>birds <span class="op">&lt;-</span> <span class="fn">left_join</span>(surveys, sites, by = <span class="st">&quot;site_id&quot;</span>)</code></pre></div></div></details></div>
+      <div class="bug"><div class="bug-title">🐞 Bug 4 · Where did the numbers go?</div><p>No error, but look at the <code>mean_birds</code> column of the printed table. Many values are <code>NA</code>.</p><details><summary>Hint</summary><div class="details-body"><p>One <code>NA</code> in a group makes <code>sum()</code> of that group <code>NA</code>. Are there any missing counts?</p><div class="code-block"><div class="code-header"><span class="code-lang">R</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="fn">sum</span>(<span class="fn">is.na</span>(surveys<span class="op">$</span>count))</code></pre></div></div></details><details><summary>Solution</summary><div class="details-body"><p>Nine counts are missing from 2025 (the observer didn't record a number). Tell <code>sum()</code> to skip them, in <strong>both</strong> places it's used:</p><div class="code-block"><div class="code-header"><span class="code-lang">fix</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code>total_birds = <span class="fn">sum</span>(count, na.rm = <span class="kw">TRUE</span>),
+...
+<span class="fn">summarise</span>(total = <span class="fn">sum</span>(count, na.rm = <span class="kw">TRUE</span>), .groups = <span class="st">&quot;drop&quot;</span>)</code></pre></div><p><strong>Think about it:</strong> is ignoring missing counts the right call? Here it slightly undercounts nine visits. In a real study you'd decide this on purpose and write it down.</p></div></details></div>
+      <div class="bug"><div class="bug-title">🐞 Bug 5 · Why are there 18 rows?</div><p>No error, but the table should have <strong>9 rows</strong> (3 habitats × 3 seasons). Yours has 18. Look at the <code>season</code> column.</p><details><summary>Hint</summary><div class="details-body"><p>Remember what you found in Step 3?</p><div class="code-block"><div class="code-header"><span class="code-lang">R</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="fn">table</span>(surveys<span class="op">$</span>season)</code></pre></div></div></details><details><summary>Solution</summary><div class="details-body"><p>The 2024 file wrote <code>Spring</code>, <code>Summer</code>, <code>Fall</code> with capital letters, so R treats them as different seasons. Make them all lowercase right after the join:</p><div class="code-block"><div class="code-header"><span class="code-lang">fix</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code>birds <span class="op">&lt;-</span> <span class="fn">left_join</span>(surveys, sites, by = <span class="st">&quot;site_id&quot;</span>)
+
+<span class="cm"># Make season names consistent (2024 used &quot;Spring&quot; instead of &quot;spring&quot;)</span>
+birds <span class="op">&lt;-</span> birds <span class="op">%&gt;%</span>
+  <span class="fn">mutate</span>(season = <span class="fn">tolower</span>(season))</code></pre></div><p><strong>Lesson:</strong> fix messy data in a script, never by hand in the raw file. That way the fix is written down and runs every time.</p></div></details></div>
+      <p>When all three are fixed, the printed table looks like this, and three CSV files appear in <code>results/</code>:</p>
+      <div class="code-block output"><div class="code-header"><span class="code-lang">output</span></div><pre><code># A tibble: 9 × 5
+  habitat   season n_visits mean_richness mean_birds
+  &lt;chr&gt;     &lt;chr&gt;     &lt;int&gt;         &lt;dbl&gt;      &lt;dbl&gt;
+1 forest    fall         12           3.1       14
+2 forest    spring       12           5.3       39.1
+3 forest    summer       12           5.3       32.8
+4 grassland fall         11           2.8       10.8
+5 grassland spring       12           3.6       22.7
+6 grassland summer       12           3.8       17.8
+7 wetland   fall         12           3.8       17
+8 wetland   spring       12           5.4       52.9
+9 wetland   summer       12           4.3       30</code></pre></div>
+      <div class="callout warn"><div class="callout-title">Seeing “invalid 'type' (character) of argument”?</div><p>Then <code>count</code> was read as text, which means the extra header lines are still in <code>all_surveys.csv</code>. Go back and fix Bug 2, rerun <code>bash scripts/02_combine.sh</code>, then Source this script again. A bug in one step can show up as an error in a later one.</p></div>
+      <div class="callout tip"><div class="callout-title">Why does grassland fall have 11 visits?</div><p>On one fall visit to a grassland site, no birds were seen at all, so that visit has no rows in the data. Real data has quirks like this.</p></div></div>
+<div class="section"><div class="section-title">Step 7 · Make the Figures</div>
+      <p>Save this as <code>scripts/04_figures.R</code> and click <strong>Source</strong>:</p>
+      <div class="code-block"><div class="code-header"><span class="code-lang">scripts/04_figures.R</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="cm"># Make figures from the summary tables</span>
+<span class="kw">library</span>(dplyr)
+<span class="kw">library</span>(ggplot2)
+
+fig_dir <span class="op">&lt;-</span> <span class="st">&quot;figure&quot;</span>
+
+visits <span class="op">&lt;-</span> <span class="fn">read.csv</span>(<span class="st">&quot;results/visits.csv&quot;</span>)
+species_totals <span class="op">&lt;-</span> <span class="fn">read.csv</span>(<span class="st">&quot;results/species_totals.csv&quot;</span>)
+visits<span class="op">$</span>season <span class="op">&lt;-</span> <span class="fn">factor</span>(visits<span class="op">$</span>season, levels = <span class="fn">c</span>(<span class="st">&quot;spring&quot;</span>, <span class="st">&quot;summer&quot;</span>, <span class="st">&quot;fall&quot;</span>))
+visits<span class="op">$</span>year <span class="op">&lt;-</span> <span class="fn">substr</span>(visits<span class="op">$</span>date, <span class="nm">1</span>, <span class="nm">4</span>)
+
+<span class="cm"># Figure 1: species richness by habitat and season</span>
+p1 <span class="op">&lt;-</span> <span class="fn">ggplot</span>(visits, <span class="fn">aes</span>(x = habitat, y = richness, fill = season))
+  <span class="op">+</span> <span class="fn">geom_boxplot</span>()
+  <span class="op">+</span> <span class="fn">labs</span>(x = <span class="st">&quot;Habitat&quot;</span>, y = <span class="st">&quot;Species per visit&quot;</span>, fill = <span class="st">&quot;Season&quot;</span>,
+         title = <span class="st">&quot;Species richness by habitat and season&quot;</span>)
+  <span class="op">+</span> <span class="fn">theme_bw</span>()
+<span class="fn">ggsave</span>(<span class="fn">file.path</span>(fig_dir, <span class="st">&quot;fig1_richness.png&quot;</span>), p1, width = <span class="nm">7</span>, height = <span class="nm">4.5</span>)
+
+<span class="cm"># Figure 2: birds counted per visit, by year</span>
+yearly <span class="op">&lt;-</span> visits <span class="op">%&gt;%</span>
+  <span class="fn">group_by</span>(habitat, year) <span class="op">%&gt;%</span>
+  <span class="fn">summarise</span>(mean_birds = <span class="fn">mean</span>(total_birds), .groups = <span class="st">&quot;drop&quot;</span>)
+
+p2 <span class="op">&lt;-</span> <span class="fn">ggplot</span>(yearly, <span class="fn">aes</span>(x = year, y = mean_birds, color = habitat, group = habitat)) <span class="op">+</span>
+  <span class="fn">geom_line</span>(linewidth = <span class="nm">1</span>) <span class="op">+</span>
+  <span class="fn">geom_point</span>(size = <span class="nm">3</span>) <span class="op">+</span>
+  <span class="fn">labs</span>(x = <span class="st">&quot;Year&quot;</span>, y = <span class="st">&quot;Birds per visit&quot;</span>, color = <span class="st">&quot;Habitat&quot;</span>,
+       title = <span class="st">&quot;Birds counted per visit, 2023-2025&quot;</span>) <span class="op">+</span>
+  <span class="fn">theme_bw</span>()
+<span class="fn">ggsave</span>(<span class="fn">file.path</span>(fig_dir, <span class="st">&quot;fig2_birds_by_year.png&quot;</span>), p2, width = <span class="nm">7</span>, height = <span class="nm">4.5</span>)
+
+<span class="cm"># Figure 3: most common species in each habitat</span>
+top_species <span class="op">&lt;-</span> species_totals <span class="op">%&gt;%</span>
+  <span class="fn">group_by</span>(habitat) <span class="op">%&gt;%</span>
+  <span class="fn">slice_max</span>(total, n = <span class="nm">4</span>)
+
+p3 <span class="op">&lt;-</span> <span class="fn">ggplot</span>(top_species, <span class="fn">aes</span>(x = <span class="fn">reorder</span>(species, total), y = total, fill = habitat)) <span class="op">+</span>
+  <span class="fn">geom_col</span>() <span class="op">+</span>
+  <span class="fn">coord_flip</span>() <span class="op">+</span>
+  <span class="fn">facet_wrap</span>(<span class="op">~</span> habitat, scales = <span class="st">&quot;free_y&quot;</span>) <span class="op">+</span>
+  <span class="fn">labs</span>(x = <span class="kw">NULL</span>, y = <span class="st">&quot;Total birds counted&quot;</span>, title = <span class="st">&quot;Most common species by habitat&quot;</span>) <span class="op">+</span>
+  <span class="fn">theme_bw</span>() <span class="op">+</span>
+  <span class="fn">theme</span>(legend.position = <span class="st">&quot;none&quot;</span>)
+<span class="fn">ggsave</span>(<span class="fn">file.path</span>(fig_dir, <span class="st">&quot;fig3_top_species.png&quot;</span>), p3, width = <span class="nm">9</span>, height = <span class="nm">4</span>)</code></pre></div>
+      <div class="bug"><div class="bug-title">🐞 Bug 6 · The plus sign in the wrong place</div><div class="code-block output"><div class="code-header"><span class="code-lang">error</span></div><pre><code>Error in `+.gg`:
+! Cannot use `+` with a single argument
+ℹ Did you accidentally put `+` on a new line?</code></pre></div><details><summary>Hint</summary><div class="details-body"><p>The error message practically answers the question. In R, when does a line of code end?</p></div></details><details><summary>Solution</summary><div class="details-body"><p>R runs a line as soon as it's complete. <code>p1 &lt;- ggplot(...)</code> is already complete, so R stops there and then finds a line starting with <code>+</code>. The <code>+</code> has to go at the <strong>end</strong> of a line, so R knows more is coming:</p><div class="code-block"><div class="code-header"><span class="code-lang">fix</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code>p1 <span class="op">&lt;-</span> <span class="fn">ggplot</span>(visits, <span class="fn">aes</span>(x = habitat, y = richness, fill = season)) <span class="op">+</span>
+  <span class="fn">geom_boxplot</span>() <span class="op">+</span>
+  <span class="fn">labs</span>(x = <span class="st">&quot;Habitat&quot;</span>, y = <span class="st">&quot;Species per visit&quot;</span>, fill = <span class="st">&quot;Season&quot;</span>,
+       title = <span class="st">&quot;Species richness by habitat and season&quot;</span>) <span class="op">+</span>
+  <span class="fn">theme_bw</span>()</code></pre></div></div></details></div>
+      <div class="bug"><div class="bug-title">🐞 Bug 7 · Lost figures</div><p>With current versions of ggplot2 you'll see:</p><div class="code-block output"><div class="code-header"><span class="code-lang">error</span></div><pre><code>Error in `ggsave()`:
+! Cannot find directory figure.
+ℹ Please supply an existing directory or use `create.dir = TRUE`.</code></pre></div><p>With older versions there's <strong>no error</strong>. Instead, check <code>list.files()</code>: did the plots end up somewhere unexpected?</p><details><summary>Hint</summary><div class="details-body"><p>Which folder did you make in Step 1? Which folder does the script save to?</p></div></details><details><summary>Solution</summary><div class="details-body"><p>The folder is <code>figures</code>, with an s. Because the folder name is stored in one variable, it's a one-line fix:</p><div class="code-block"><div class="code-header"><span class="code-lang">fix</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code>fig_dir <span class="op">&lt;-</span> <span class="st">&quot;figures&quot;</span></code></pre></div><p>If an older ggplot2 created a stray <code>figure/</code> folder, delete it.</p></div></details></div>
+      <p>You should now have three figures in <code>figures/</code>:</p>
+      <div class="fig-grid">
+        <img src="img/fig1_richness.png" alt="Box plots of species richness by habitat and season">
+        <img src="img/fig2_birds_by_year.png" alt="Line plot of birds per visit by year for each habitat">
+        <img src="img/fig3_top_species.png" alt="Bar charts of the four most common species in each habitat">
+      </div>
+      <div class="callout demo"><div class="callout-title">Read the figures</div>
+        <p>Which habitat has the most species per visit? Which season? What's happening to grassland birds from 2023 to 2025?</p>
+      </div></div>
+<div class="section"><div class="section-title">Step 8 · Build the HTML Report</div>
+      <p>Last step: an R script that writes an HTML page with the summary table and the figures. HTML is just text, so R can write it with <code>writeLines()</code>. Save this as <code>scripts/05_report.R</code> and Source it:</p>
+      <div class="code-block"><div class="code-header"><span class="code-lang">scripts/05_report.R</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="cm"># Write a simple HTML report that shows the tables and figures</span>
+
+summary_table <span class="op">&lt;-</span> <span class="fn">read.csv</span>(<span class="st">&quot;results/habitat_season_summary.csv&quot;</span>)
+visits <span class="op">&lt;-</span> <span class="fn">read.csv</span>(<span class="st">&quot;results/visits.csv&quot;</span>)
+
+<span class="cm"># Turn a data frame into an HTML table</span>
+to_html_table <span class="op">&lt;-</span> <span class="kw">function</span>(df) {
+  header <span class="op">&lt;-</span> <span class="fn">paste0</span>(<span class="st">&quot;&lt;tr&gt;&quot;</span>, <span class="fn">paste0</span>(<span class="st">&quot;&lt;th&gt;&quot;</span>, <span class="fn">names</span>(df), <span class="st">&quot;&lt;/th&gt;&quot;</span>, collapse = <span class="st">&quot;&quot;</span>), <span class="st">&quot;&lt;/tr&gt;&quot;</span>)
+  rows <span class="op">&lt;-</span> <span class="fn">apply</span>(df, <span class="nm">1</span>, <span class="kw">function</span>(r) {
+    <span class="fn">paste0</span>(<span class="st">&quot;&lt;tr&gt;&quot;</span>, <span class="fn">paste0</span>(<span class="st">&quot;&lt;td&gt;&quot;</span>, r, <span class="st">&quot;&lt;/td&gt;&quot;</span>, collapse = <span class="st">&quot;&quot;</span>), <span class="st">&quot;&lt;/tr&gt;&quot;</span>)
+  })
+  <span class="fn">c</span>(<span class="st">&quot;&lt;table&gt;&quot;</span>, header, rows, <span class="st">&quot;&lt;/table&gt;&quot;</span>)
+}
+
+html <span class="op">&lt;-</span> <span class="fn">c</span>(
+  <span class="st">&quot;&lt;!DOCTYPE html&gt;&quot;</span>,
+  <span class="st">&quot;&lt;html&gt;&lt;head&gt;&lt;meta charset=&#x27;utf-8&#x27;&gt;&lt;title&gt;Palouse Bird Surveys&lt;/title&gt;&quot;</span>,
+  <span class="st">&quot;&lt;style&gt;&quot;</span>,
+  <span class="st">&quot;  body { font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto; }&quot;</span>,
+  <span class="st">&quot;  table { border-collapse: collapse; margin: 16px 0; }&quot;</span>,
+  <span class="st">&quot;  th, td { border: 1px solid #ccc; padding: 6px 12px; text-align: left; }&quot;</span>,
+  <span class="st">&quot;  th { background: #f2f2f2; }&quot;</span>,
+  <span class="st">&quot;  img { max-width: 100%; margin: 12px 0; border: 1px solid #ddd; }&quot;</span>,
+  <span class="st">&quot;&lt;/style&gt;&lt;/head&gt;&lt;body&gt;&quot;</span>,
+  <span class="st">&quot;&lt;h1&gt;Palouse Bird Surveys, 2023-2025&lt;/h1&gt;&quot;</span>,
+  <span class="fn">paste0</span>(<span class="st">&quot;&lt;p&gt;Report generated on &quot;</span>, <span class="fn">Sys.Date</span>(), <span class="st">&quot; from &quot;</span>, <span class="fn">nrow</span>(visits),
+         <span class="st">&quot; survey visits at &quot;</span>, <span class="fn">length</span>(<span class="fn">unique</span>(visits<span class="op">$</span>site_id)), <span class="st">&quot; sites.&lt;/p&gt;&quot;</span>),
+  <span class="st">&quot;&lt;h2&gt;Average visit by habitat and season&lt;/h2&gt;&quot;</span>,
+  <span class="fn">to_html_table</span>(summary_table),
+  <span class="st">&quot;&lt;h2&gt;Figures&lt;/h2&gt;&quot;</span>,
+  <span class="st">&quot;&lt;img src=&#x27;figures/fig1_richness.png&#x27; alt=&#x27;Species richness by habitat and season&#x27;&gt;&quot;</span>,
+  <span class="st">&quot;&lt;img src=&#x27;figures/fig2_birds_by_year.png&#x27; alt=&#x27;Birds per visit by year&#x27;&gt;&quot;</span>,
+  <span class="st">&quot;&lt;img src=&#x27;figures/fig3_top_species.png&#x27; alt=&#x27;Most common species by habitat&#x27;&gt;&quot;</span>,
+  <span class="st">&quot;&lt;/body&gt;&lt;/html&gt;&quot;</span>
+)
+
+<span class="fn">writeLines</span>(html, <span class="st">&quot;results/report.html&quot;</span>)
+<span class="fn">cat</span>(<span class="st">&quot;Report written to results/report.html\n&quot;</span>)</code></pre></div>
+      <p>Open <code>results/report.html</code> in your web browser: double-click it in Finder or File Explorer, or click it in RStudio's Files pane and choose <strong>View in Web Browser</strong>.</p>
+      <div class="bug"><div class="bug-title">🐞 Bug 8 · The report with no pictures</div><p>The script runs without errors and the table shows up, but every figure is a <strong>broken image</strong>.</p><details><summary>Hint</summary><div class="details-body"><p>Paths inside an HTML file are relative to <em>where the HTML file is</em>. Where is <code>report.html</code>? Where are the figures? From inside <code>results/</code>, how would you get to <code>figures/</code>?</p></div></details><details><summary>Solution</summary><div class="details-body"><p>The report lives in <code>results/</code>, so <code>figures/fig1_richness.png</code> points to <code>results/figures/</code>, which doesn't exist. Go up one level first with <code>..</code>, the same as <code>cd ..</code> in the shell:</p><div class="code-block"><div class="code-header"><span class="code-lang">fix</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="st">&quot;&lt;img src=&#x27;../figures/fig1_richness.png&#x27; alt=&#x27;Species richness by habitat and season&#x27;&gt;&quot;</span>,
+<span class="st">&quot;&lt;img src=&#x27;../figures/fig2_birds_by_year.png&#x27; alt=&#x27;Birds per visit by year&#x27;&gt;&quot;</span>,
+<span class="st">&quot;&lt;img src=&#x27;../figures/fig3_top_species.png&#x27; alt=&#x27;Most common species by habitat&#x27;&gt;&quot;</span>,</code></pre></div><p><strong>Lesson:</strong> a silent bug. Nothing errors; you only catch it by looking at the result.</p></div></details></div>
+      <p>Fixed, your report looks like this:</p>
+      <img class="screenshot" src="img/report.png" alt="Screenshot of the finished HTML report with a summary table and three figures"></div>
+<div class="section"><div class="section-title">Step 9 · Rebuild Everything from Scratch</div>
+      <p>The real test of a reproducible project: delete everything the scripts made, and rebuild it. First, a script that runs all the R steps in order. Save as <code>scripts/run_all.R</code>:</p>
+      <div class="code-block"><div class="code-header"><span class="code-lang">scripts/run_all.R</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="cm"># Re-run every R step, in order</span>
+<span class="fn">source</span>(<span class="st">&quot;scripts/03_summarize.R&quot;</span>)
+<span class="fn">source</span>(<span class="st">&quot;scripts/04_figures.R&quot;</span>)
+<span class="fn">source</span>(<span class="st">&quot;scripts/05_report.R&quot;</span>)</code></pre></div>
+      <p>In the terminal, from <code>bird_project/</code>, delete all the outputs and rebuild the clean data:</p>
+      <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="kw">rm</span> -r data/clean/* results/* figures/*
+<span class="kw">bash</span> scripts/02_combine.sh</code></pre></div>
+      <p>Then in RStudio, restart R (<strong>Session → Restart R</strong>) and run:</p>
+      <div class="code-block"><div class="code-header"><span class="code-lang">R</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="fn">source</span>(<span class="st">&quot;scripts/run_all.R&quot;</span>)</code></pre></div>
+      <p>Open <code>results/report.html</code> again. If it looks the same as before, <strong>your project is reproducible</strong>: anyone with your scripts can rebuild every table and figure from the original download.</p>
+      <div class="callout warn"><div class="callout-title">rm is forever</div><p>There's no recycle bin in the shell. That's fine here, because everything we deleted can be rebuilt by the scripts. That's exactly the point: never keep the only copy of something in <code>results/</code> or <code>figures/</code>.</p></div>
+      <div class="callout tip"><div class="callout-title">Mac and Linux: one command for everything</div><p>If <code>Rscript</code> works in your terminal, you can run the whole pipeline at once: <code>bash scripts/01_download.sh &amp;&amp; bash scripts/02_combine.sh &amp;&amp; Rscript scripts/run_all.R</code>. The <code>&amp;&amp;</code> means "only keep going if the last step worked."</p></div></div>
+<div class="section"><div class="section-title">Step 10 · Extend It with AI <span class="badge ai">AI</span></div>
+      <p>Use AI to add to your project. For each one, read the code before you run it, and check the result.</p>
+      <h2>Add a fourth figure</h2>
+      <div class="prompt-box"><div class="prompt-label">Paste into Claude or ChatGPT</div><button class="prompt-copy" onclick="copyPrompt(this)">Copy prompt</button><div class="prompt-text">I have an R project with a file results/visits.csv (columns: habitat, season, site_id, date, richness, total_birds) and data/raw/bird_surveys/sites.csv (columns: site_id, site_name, habitat, elevation_m).
+
+Write ggplot2 code that joins them by site_id, calculates the mean species richness for each site, and plots it against elevation, colored by habitat. Save it as figures/fig4_elevation.png using ggsave.
+
+Then tell me the exact line to add to my 05_report.R so the new figure shows up in my HTML report. The report is saved in results/ and the figures are in figures/.</div></div>
+      <p><strong>Check:</strong> does the figure show up in the report? Did the AI get the image path right (remember Bug 8)?</p>
+      <h2>Write the README</h2>
+      <div class="prompt-box"><div class="prompt-label">Paste into Claude or ChatGPT</div><button class="prompt-copy" onclick="copyPrompt(this)">Copy prompt</button><div class="prompt-text">Write a short README.md for a small research project. It has these folders: data/raw, data/clean, scripts, results, figures. The scripts run in this order: 01_download.sh (downloads bird survey data with curl), 02_combine.sh (combines yearly CSV files), 03_summarize.R (summarizes by habitat and season with dplyr), 04_figures.R (makes 3 ggplot2 figures), 05_report.R (writes results/report.html). Include a &quot;How to reproduce&quot; section with the exact commands.</div></div>
+      <p>Save it as <code>README.md</code> in <code>bird_project/</code>. <strong>Check:</strong> are the commands it lists exactly right? Try them.</p>
+      <h2>Ask about a bug you fixed</h2>
+      <div class="prompt-box"><div class="prompt-label">Paste into Claude or ChatGPT</div><button class="prompt-copy" onclick="copyPrompt(this)">Copy prompt</button><div class="prompt-text">In R, why does sum() return NA when there is a missing value, and when is it a bad idea to use na.rm = TRUE in a scientific analysis?</div></div></div>
+<div class="section"><div class="section-title">Bonus · Save It with Git</div>
+      <p>If you've done the Git lesson, put your project under version control. The scripts are what matter; the outputs can always be rebuilt.</p>
+      <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="kw">git</span> init
+<span class="kw">git</span> add scripts/ README.md
+<span class="kw">git</span> commit -m <span class="st">&quot;Bird survey pipeline: download to HTML report&quot;</span></code></pre></div></div>
+<div class="section"><div class="section-title">Recap: All 8 Bugs</div>
+      <p>Four of the eight bugs gave <strong>no error at all</strong>. Those are the dangerous ones in real research, because you only catch them by checking your results.</p>
+      <details><summary>Show the recap (after you've finished!)</summary><div class="details-body">
+      <table class="recap"><tr><th>#</th><th>Script</th><th>Symptom</th><th>Lesson</th></tr><tr><td>1</td><td><code>01_download.sh</code></td><td><code>tar</code>: not in gzip format</td><td>A download can succeed and still be wrong. Look at what you got.</td></tr><tr><td>2</td><td><code>02_combine.sh</code></td><td>No error; 3 header lines</td><td><code>cat</code> keeps every header. Check your output, not just for errors.</td></tr><tr><td>3</td><td><code>03_summarize.R</code></td><td><code>left_join()</code> can't find <code>site</code></td><td>Check real column names with <code>names()</code>.</td></tr><tr><td>4</td><td><code>03_summarize.R</code></td><td>No error; <code>NA</code> results</td><td>Missing values spread. Decide how to handle them on purpose.</td></tr><tr><td>5</td><td><code>03_summarize.R</code></td><td>No error; 18 rows instead of 9</td><td><code>Spring</code> ≠ <code>spring</code>. Clean data in code, not by hand.</td></tr><tr><td>6</td><td><code>04_figures.R</code></td><td>Cannot use <code>+</code> with a single argument</td><td>In ggplot2, <code>+</code> goes at the end of the line.</td></tr><tr><td>7</td><td><code>04_figures.R</code></td><td>Cannot find directory <code>figure</code></td><td>Typos in paths. Storing a path in one variable makes it a one-line fix.</td></tr><tr><td>8</td><td><code>05_report.R</code></td><td>No error; broken images</td><td>Relative paths start from the file's own location.</td></tr></table>
+      </div></details>
+      <div class="page-nav"><a href="index.html">← Home</a><span></span></div></div>
+  </div>
+</div>
+
+<script src="scripts.js"></script>
+</body>
+</html>

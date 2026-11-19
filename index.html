@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Build a Reproducible Project: Unix + R</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<button class="menu-toggle" aria-label="Toggle menu">☰</button>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <a href="index.html">Build a Reproducible Project: Unix + R</a>
+    <a href="https://imci.uidaho.edu/data-carpentries-training" target="_blank"><span>IMCI · University of Idaho</span></a>
+  </div>
+  <nav>
+    <div class="nav-section">Overview</div>
+    <a href="index.html">Home</a>
+    <div class="nav-section">Workshop</div>
+    <a href="day1.html">Day 1: Raw Data to Report<span class="day-label">One-day hands-on</span></a>
+    
+  </nav>
+  <div class="sidebar-footer">Sarem Khilji<br>Site style adapted from<br>JT Van Leuven's course site</div>
+</aside>
+
+<div class="main">
+  <header class="page-header">
+    <div class="day-tag">University of Idaho · IMCI</div>
+    <h1>Build a Reproducible Project: Unix + R</h1>
+    <p style="color:#94A3B8;margin-top:10px;font-size:15px;">A one-day, hands-on walkthrough: take raw data from a download link to finished figures and an HTML report, using the shell and R, and fix the bugs along the way.</p>
+    <div class="meta">
+      <span>One session · about 2.5 hours</span>
+      <span>Shell + R + RStudio</span>
+      <span>8 planted bugs to find</span>
+    </div>
+  </header>
+
+  <div class="content">
+<div class="section"><div class="section-title">What You'll Do</div>
+      <p>You've just been handed three years of bird survey data from 12 sites around the Palouse. Your job is to turn it into a small, reproducible research project: organized folders, scripts for every step, summary tables, figures, and a report you can open in any web browser.</p>
+      <p>Along the way, some of the scripts have <strong>bugs planted on purpose</strong>. Finding and fixing them is the point: reading error messages, checking your output, and noticing when something runs without errors but is still wrong are the skills you'll use every day in real research.</p>
+      <p>This session puts together everything from the Unix and R lessons: navigating and creating directories, downloading files, pipes and loops, shell scripts, data frames, dplyr, and ggplot2.</p></div>
+<div class="section"><div class="section-title">Schedule</div>
+      <div class="day-grid">
+        <a class="day-card" href="day1.html">
+          <div class="card-day">Day 1</div>
+          <h3>From Raw Data to Report</h3>
+          <p>Make a project, download data with curl, combine files in the shell, summarize in R, make figures, and generate an HTML report.</p>
+          <div class="card-date">Dataset: bird_surveys.tar.gz</div>
+        </a>
+      </div></div>
+<div class="section"><div class="section-title">Before You Arrive</div>
+      <h2>Software</h2>
+      <ul class="link-list">
+        <li><a href="https://learn.microsoft.com/en-us/windows/wsl/install" target="_blank">WSL (Windows)</a><span class="link-desc">Recommended shell for Windows. Mac and Linux already have one (Terminal).</span></li>
+        <li><a href="https://carpentries.github.io/workshop-template/install_instructions/#shell" target="_blank">Git Bash (Windows alternative)</a><span class="link-desc">If you can't use WSL</span></li>
+        <li><a href="https://posit.co/download/rstudio-desktop/" target="_blank">R and RStudio</a><span class="link-desc">Install R first, then RStudio</span></li>
+      </ul>
+      <h2>R packages</h2>
+      <p>Open RStudio and run this once in the Console:</p>
+      <div class="code-block"><div class="code-header"><span class="code-lang">R</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="fn">install.packages</span>(<span class="fn">c</span>(<span class="st">&quot;dplyr&quot;</span>, <span class="st">&quot;ggplot2&quot;</span>))</code></pre></div>
+      <h2>The dataset</h2>
+      <p>You'll download the data during the session with one command, so there's nothing to download ahead of time. If you want to peek at it:</p>
+      <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code><span class="kw">curl</span> -LO https://galaxy154.github.io/unix-r-project-day/data/bird_surveys.tar.gz</code></pre></div>
+      <p>Windows users: if you use WSL, you'll build the project on your <strong>Windows</strong> Desktop (<code>/mnt/c/Users/&lt;you&gt;/Desktop</code>) so that RStudio can open it too.</p></div>
+<div class="section"><div class="section-title">Using AI in This Workshop <span class="badge ai">AI</span></div>
+      <p>Green <strong>AI Prompt</strong> boxes have prompts you can copy into Claude, ChatGPT, or Gemini. AI is welcome for the bug hunt too, with one rule: <strong>you have to be able to explain the fix in your own words.</strong></p>
+      <div class="callout demo"><div class="callout-title">Give context</div><p>Say what you're using (<em>"bash on WSL Ubuntu"</em>, <em>"R with dplyr"</em>) and what you're trying to do.</p></div>
+      <div class="callout demo"><div class="callout-title">Paste the exact error</div><p>Copy the whole error message, not a paraphrase. The wording usually points right at the problem.</p></div>
+      <div class="callout demo"><div class="callout-title">Show your data</div><p>Paste <code>names(df)</code> or <code>head(df)</code> so the AI uses your real column names instead of guessing.</p></div>
+      <div class="callout demo"><div class="callout-title">Check the answer</div><p>Run it and compare with the expected output. "No error" is not the same as "correct."</p></div></div>
+<div class="section"><div class="section-title">Links</div>
+      <ul class="link-list">
+        <li><a href="https://github.com/Galaxy154/unix-r-project-day" target="_blank">This site's GitHub repository</a><span class="link-desc">Page source and the dataset</span></li>
+        <li><a href="https://jtvanleuven.github.io/Git-R-and-Unix-for-Reproducible-Scientific-Analysis/" target="_blank">Git, R, and Unix for Reproducible Scientific Analysis</a><span class="link-desc">JT Van Leuven's full six-day course</span></li>
+        <li><a href="https://swcarpentry.github.io/shell-novice/" target="_blank">Carpentries: The Unix Shell</a></li>
+        <li><a href="https://swcarpentry.github.io/r-novice-gapminder/" target="_blank">Carpentries: R for Reproducible Scientific Analysis</a></li>
+        <li><a href="https://docs.carpentries.org/topic_folders/policies/code-of-conduct.html" target="_blank">Code of Conduct</a></li>
+      </ul>
+      <div class="page-nav"><span></span><a class="next" href="day1.html">Day 1: From Raw Data to Report →</a></div></div>
+  </div>
+</div>
+
+<script src="scripts.js"></script>
+</body>
+</html>
