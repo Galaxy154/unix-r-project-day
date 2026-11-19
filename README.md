@@ -2,7 +2,9 @@
 
 A one-day, hands-on workshop page. Students build a small research project from scratch: make directories, download data with `curl`, combine files in the shell, summarize and plot in R, and generate an HTML report. Eight bugs are planted in the scripts for students to find and fix.
 
-**Live site:** see the GitHub Pages link in this repo's About section.
+**Start here: [Day 1 walkthrough: From Raw Data to Report](https://galaxy154.github.io/unix-r-project-day/day1.html)**
+
+Workshop home page: https://galaxy154.github.io/unix-r-project-day/
 
 ## What's here
 
