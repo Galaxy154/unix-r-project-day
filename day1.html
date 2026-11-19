@@ -78,7 +78,17 @@
 ./figures
 ./results
 ./scripts</code></pre></div>
-      <div class="callout tip"><div class="callout-title">What just happened?</div><p><code>mkdir -p</code> makes a folder <em>and any parent folders it needs</em>, without complaining if they already exist. The curly braces <code>{a,b,c}</code> are brace expansion: the shell turns one path into five. <code>find . -type d</code> lists every directory under the current one.</p></div>
+      <div class="callout tip"><div class="callout-title">What just happened?</div><p><code>mkdir -p</code> makes a folder <em>and any parent folders it needs</em>, without complaining if they already exist. The curly braces <code>{a,b,c}</code> are brace expansion: the shell turns one path into five.</p></div>
+      <h2>Why run find?</h2>
+      <p>It's a quick check that <code>mkdir</code> actually made what we wanted, before we build anything on top of it. Get in the habit of checking your work after every step: a typo in a folder name is easy to fix now, and much harder to track down later when a script can't find the folder (you'll see exactly that in Bug 7).</p>
+      <p><code>find</code> searches a folder <em>and everything inside it</em>, all the way down. Piece by piece:</p>
+      <ul>
+        <li><code>find</code>: search for files and folders</li>
+        <li><code>.</code>: start here, in the current directory (<code>bird_project/</code>)</li>
+        <li><code>-type d</code>: only show <strong>d</strong>irectories (<code>-type f</code> would show only <strong>f</strong>iles)</li>
+      </ul>
+      <p>In the output, <code>.</code> is <code>bird_project</code> itself, and <code>./data/raw</code> means the <code>raw</code> folder inside <code>data</code>. Your order may be different; that's fine.</p>
+      <div class="callout demo"><div class="callout-title">Why not just use ls?</div><p><code>ls</code> only shows one level, so you'd see <code>data</code> but not the <code>raw</code> and <code>clean</code> folders inside it. <code>find</code> shows the whole tree at once. Try <code>ls</code> and compare. Later, once you've downloaded the data, try <code>find . -type f</code> to list every file in the project.</p></div>
       <div class="callout warn"><div class="callout-title">WSL users: build it on your Windows Desktop</div><p>RStudio runs on Windows, so it can only open the project if it lives on your Windows drive. <code>/mnt/c/Users/&lt;you&gt;/Desktop</code> in Ubuntu is the same folder as <code>C:\Users\&lt;you&gt;\Desktop</code> in File Explorer. If your Desktop is synced to OneDrive, it's <code>/mnt/c/Users/&lt;you&gt;/OneDrive/Desktop</code>.</p></div>
       <p>From here on, <strong>run every command from inside <code>bird_project/</code></strong>. Check with <code>pwd</code> if you're not sure.</p></div>
 <div class="section"><div class="section-title">Step 2 · Download the Data</div>
